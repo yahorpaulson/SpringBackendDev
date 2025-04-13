@@ -1,7 +1,9 @@
 package yahor.backend.project_analysis.spring_boot_project.controllers
 
 import org.bson.types.ObjectId
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -16,8 +18,6 @@ import java.time.Instant
 class NoteController (
     private val repository: NoteRepository
 ){
-
-
     data class NoteRequest(
         val id: String?,
         val title: String,
@@ -50,14 +50,24 @@ class NoteController (
         return  note.toResponse()
 
     }
+
     @GetMapping
     fun findByOwnerId(
         @RequestParam(required = true) ownerId: String
-    ):List<NoteResponse>{
-        return repository.findByOwnerId(ObjectId()).map {
+    ): List<NoteResponse> {
+        return repository.findByOwnerId(ObjectId(ownerId)).map {
             it.toResponse()
         }
     }
+
+    @DeleteMapping(path=["/{id}"])
+    fun deleteById(@PathVariable id:String){
+        repository.deleteById(ObjectId(id))
+    }
+
+
+
+
     private fun Note.toResponse(): NoteController.NoteResponse{
         return NoteResponse(
             id = id.toHexString(),
@@ -68,4 +78,5 @@ class NoteController (
 
         )
     }
+
 }
