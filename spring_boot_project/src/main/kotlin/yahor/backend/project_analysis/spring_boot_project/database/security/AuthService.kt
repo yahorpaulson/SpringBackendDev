@@ -4,10 +4,12 @@ package yahor.backend.project_analysis.spring_boot_project.database.security
 import org.bson.types.ObjectId
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import yahor.backend.project_analysis.spring_boot_project.database.model.RefreshToken
 import yahor.backend.project_analysis.spring_boot_project.database.model.User
 import yahor.backend.project_analysis.spring_boot_project.database.repository.RefreshTokenRepository
 import yahor.backend.project_analysis.spring_boot_project.database.repository.UserRepository
+import java.lang.IllegalArgumentException
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.*
@@ -43,6 +45,38 @@ class AuthService(
 
         val newAccessToken = jwtService.generateAccessToken(user.id.toHexString())
         val newRefreshToken = jwtService.generateRefreshToken(user.id.toHexString())
+
+        storeRefreshToken(user.id, newRefreshToken)
+
+        return TokenPair(
+            accessToken = newAccessToken,
+            refreshToken = newRefreshToken
+        )
+
+    }
+
+    @Transactional //if one operation fails, rollback
+    fun refresh(refreshToken: String): TokenPair {
+        if(!jwtService.validateRefreshToken(refreshToken)){
+            throw IllegalArgumentException("Invalid refresh token.")
+        }
+
+        val userId = jwtService.getUserIdFromToken(refreshToken)
+        val user = userRepository.findById(ObjectId(userId)).orElseThrow {
+            IllegalArgumentException("Invalid refresh token.")
+        }
+
+        val hashed = hashToken(refreshToken)
+        refreshTokenRepository.findByUserIdAndHashedToken(
+            user.id, hashed
+        ) ?: throw IllegalArgumentException("Refresh token not recognized")
+
+        refreshTokenRepository.deleteByUserIdAndHashedToken(user.id, hashed)
+
+        val newAccessToken = jwtService.generateAccessToken(user.id.toHexString())
+        val newRefreshToken = jwtService.generateRefreshToken(user.id.toHexString())
+
+        storeRefreshToken(user.id, newRefreshToken)
 
         return TokenPair(
             accessToken = newAccessToken,
