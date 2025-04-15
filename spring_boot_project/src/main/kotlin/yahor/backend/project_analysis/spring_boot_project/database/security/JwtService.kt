@@ -9,7 +9,7 @@ import java.util.*
 
 @Service
 class JwtService(
-    @Value("JWT_SECRET_KEY_BASE64") private val secretKeyBase64: String,
+    @Value("\${jwt.secret}") private val secretKeyBase64: String,
 ) {
 
     private val secretKey = Keys.hmacShaKeyFor(Base64.getDecoder().decode(secretKeyBase64)) //create secret key from base64 string
